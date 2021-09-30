@@ -7,6 +7,7 @@ use App\Models\ProductVariant;
 use App\Models\ProductVariantPrice;
 use App\Models\Variant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
@@ -17,7 +18,28 @@ class ProductController extends Controller
      */
     public function index()
     {
-        return view('products.index');
+        $products = Product::query()
+                    ->with('productVariant', 'productPrice')
+                    ->get()
+                    ->toArray();
+
+        $variants = Variant::all();
+
+        // $user = User::select("users.*","items.id as itemId","jobs.id as jobId")
+        //         ->join("items","items.user_id","=","users.id")
+        //         ->join("jobs",function($join){
+        //             $join->on("jobs.user_id","=","users.id")
+        //                 ->on("jobs.item_id","=","items.id");
+        //         })
+        //         ->get();
+        
+        $product_variants = DB::table('product_variants')
+                    ->join('product_variant_prices', function($join){
+                        $join->on('product_variant_prices.product_variant_one', '=', 'product_variants.id');
+                    })
+                    ->get();
+        // dd($products);
+        return view('products.index')->with(compact('products', 'variants', 'product_variants'));
     }
 
     /**
@@ -39,7 +61,13 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
+        Product::create([
+            'title' => $request->title,
+            'sku' => $request->sku,
+            'description' => $request->description,
+        ]);
 
+        return back()->with('success', 'Product added successfully');
     }
 
 
@@ -62,8 +90,9 @@ class ProductController extends Controller
      */
     public function edit(Product $product)
     {
-        $variants = Variant::all();
-        return view('products.edit', compact('variants'));
+       $product = DB::table('products')->where('id',$product->id)->first();
+    //    return response()->json($product);
+        return view('products.edit')->with(compact('product'));
     }
 
     /**
@@ -75,7 +104,13 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
-        //
+        $product->update([
+            'title' => $request->title,
+            'sku' => $request->sku,
+            'description' => $request->description,
+        ]);
+
+        return back()->with('success', 'Product updated successfully');
     }
 
     /**
@@ -86,6 +121,7 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
-        //
+        Product::where('id', $product->id)->delete();
+        return back()->with('success', 'Product has been deleted');
     }
 }
